@@ -1,26 +1,35 @@
 package ru.kinonavigator.controller;
 
+import io.micrometer.core.annotation.Timed;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import ru.kinonavigator.kafka.KafkaProducer;
 import ru.kinonavigator.model.Movie;
 import ru.kinonavigator.model.MovieRequest;
 import ru.kinonavigator.service.MovieService;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Random;
 
 @RestController
 @RequestMapping(value = "/movies")
 public class MovieController {
 
     private final MovieService movieService;
+    private KafkaProducer kafkaProducer;
 
-    public MovieController(MovieService movieService) {
+    public MovieController(MovieService movieService, KafkaProducer kafkaProducer) {
         this.movieService = movieService;
+        this.kafkaProducer = kafkaProducer;
     }
 
+
+
     @GetMapping
+    @Timed("request.movies.timed")
     public List<Movie> getAll() {
+//        Thread.sleep(new Random().nextInt(7000));
         return movieService.getAll();
     }
 
@@ -37,6 +46,7 @@ public class MovieController {
                 request.director(),
                 request.rating()
         );
+        kafkaProducer.sendMessage(request);
     }
 
     @PutMapping(value = "/{movieId:\\d+}")
